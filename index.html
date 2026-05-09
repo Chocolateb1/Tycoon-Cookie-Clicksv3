@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cookie Empire Tycoon V27 - Oficial</title>
+    <style>
+        :root { --primary: #00ff88; --bg: #0a0a0b; --surface: #16161a; --gold: #ffd700; --cookie-shadow: rgba(0,0,0,0.6); }
+        * { -webkit-tap-highlight-color: transparent; user-select: none; box-sizing: border-box; outline: none; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        #header { text-align: center; padding: 15px; background: var(--surface); border-bottom: 2px solid #333; }
+        #dinheiro { font-size: 32px; font-weight: 900; color: var(--primary); text-shadow: 0 0 10px rgba(0,255,136,0.4); }
+        #stats-bar { font-size: 11px; color: #888; margin-top: 5px; }
+
+        #tabs { display: flex; background: #000; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; color: #555; font-weight: bold; font-size: 14px; cursor: pointer; }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+
+        #area-clique { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #2c1a0a 0%, #000 100%); position: relative; }
+        
+        #cookie { 
+            width: 180px; height: 180px; 
+            background: radial-gradient(circle at 30% 30%, #e2a65a, #b5651d 70%, #8b4513 100%);
+            border-radius: 54% 46% 52% 48% / 48% 52% 48% 52%; 
+            box-shadow: inset -10px -10px 15px rgba(0,0,0,0.4), inset 10px 10px 15px rgba(255,255,255,0.2), 0 15px 35px var(--cookie-shadow);
+            cursor: pointer; position: relative; transition: transform 0.05s; border: 2px solid rgba(0,0,0,0.1);
+        }
+        
+        #cookie::before {
+            content: ''; position: absolute; width: 100%; height: 100%; top: 0; left: 0;
+            background-image: radial-gradient(circle at 25% 25%, #3d1f05 8%, transparent 10%), radial-gradient(circle at 60% 20%, #3d1f05 6%, transparent 8%), radial-gradient(circle at 45% 50%, #3d1f05 9%, transparent 11%), radial-gradient(circle at 80% 60%, #3d1f05 7%, transparent 9%), radial-gradient(circle at 30% 75%, #3d1f05 8%, transparent 10%), radial-gradient(circle at 65% 85%, #3d1f05 6%, transparent 8%);
+            filter: drop-shadow(2px 2px 2px rgba(0,0,0,0.6));
+        }
+
+        #cookie:active { transform: scale(0.92); }
+
+        #panel { height: 42vh; background: var(--surface); border-top: 2px solid #333; overflow-y: auto; }
+        .content { padding: 10px; display: none; }
+        .content.active { display: block; }
+        
+        .item { background: #1f1f25; margin-bottom: 8px; padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #2d2d35; }
+        .item-info b { display: block; font-size: 14px; color: #eee; }
+        .item-info small { color: var(--primary); font-size: 11px; }
+        
+        .btn-buy { background: var(--primary); color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: 800; min-width: 90px; cursor: pointer; }
+        .btn-buy:disabled { opacity: 0.2; cursor: not-allowed; }
+
+        .rank-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #222; font-size: 14px; }
+        .me { background: rgba(255, 215, 0, 0.1); color: var(--gold); font-weight: bold; border-left: 4px solid var(--gold); }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <div id="dinheiro">$ 0</div>
+        <div id="stats-bar">Ganhos: $ <span id="gps">0</span>/s</div>
+    </div>
+    <div id="tabs">
+        <button class="tab-btn active" onclick="tab('loja', this)">LOJA (50)</button>
+        <button class="tab-btn" onclick="tab('rank', this)">RANKING 100</button>
+    </div>
+    <div id="area-clique"><div id="cookie" onclick="clicar()"></div></div>
+    <div id="panel">
+        <div id="loja" class="content active"></div>
+        <div id="rank" class="content"></div>
+    </div>
+
+    <script>
+        let dinheiro = 0; let porClique = 1; let porSegundo = 0; let upgrades = [];
+        const nNames = ["Cursor", "Vovó", "Padaria", "Fábrica", "Mina", "Banco", "Nave", "Portal", "Laboratório", "Deus"];
+        const aTiers = ["Bronze", "Ferro", "Aço", "Ouro", "Platina"];
+
+        // Inicializar Upgrades
+        for(let i=0; i<50; i++) {
+            upgrades.push({
+                id: i,
+                nome: aTiers[Math.floor(i/10)] + " " + nNames[i%10],
+                preco: 15 * Math.pow(1.55, i), 
+                power: (i + 1) * Math.pow(1.6, i), 
+                tipo: i % 5 === 0 ? 'c' : 's',
+                count: 0
+            });
+        }
+
+        // Sistema de Salvamento
+        function salvar() {
+            const save = { dinheiro, porClique, porSegundo, counts: upgrades.map(u => u.count) };
+            localStorage.setItem('cookie_save_v27', JSON.stringify(save));
+        }
+
+        function carregar() {
+            const raw = localStorage.getItem('cookie_save_v27');
+            if(raw) {
+                const s = JSON.parse(raw);
+                dinheiro = s.dinheiro; porClique = s.porClique; porSegundo = s.porSegundo;
+                s.counts.forEach((c, i) => {
+                    upgrades[i].count = c;
+                    for(let j=0; j<c; j++) { upgrades[i].preco *= 1.45; }
+                });
+            }
+        }
+
+        function format(v) { 
+            if(v >= 1e15) return (v/1e15).toFixed(2)+"Q";
+            if(v >= 1e12) return (v/1e12).toFixed(2)+"T";
+            if(v >= 1e9) return (v/1e9).toFixed(2)+"B";
+            if(v >= 1e6) return (v/1e6).toFixed(2)+"M";
+            return Math.floor(v).toLocaleString(); 
+        }
+
+        function clicar() { dinheiro += porClique; update(); salvar(); }
+
+        function comprar(id) {
+            let u = upgrades[id];
+            if(dinheiro >= u.preco) {
+                dinheiro -= u.preco; u.count++;
+                if(u.tipo === 'c') porClique += u.power; else porSegundo += u.power;
+                u.preco *= 1.45; update(); salvar();
+            }
+        }
+
+        function tab(t, b) {
+            document.querySelectorAll('.content, .tab-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById(t).classList.add('active'); b.classList.add('active');
+            if(t === 'rank') renderRank();
+        }
+
+        function renderRank() {
+            let r = document.getElementById('rank');
+            r.innerHTML = "<h3 style='text-align:center;color:var(--gold)'>TOP 100 GLOBAL</h3>";
+            let bots = [];
+            for(let i=0; i<99; i++) {
+                bots.push({ n: "Player_" + (1000+i), s: Math.pow(10, 15 - (i/6)) });
+            }
+            bots.push({ n: "VOCÊ (Seu Império)", s: dinheiro, m: true });
+            bots.sort((x,y) => y.s - x.s).forEach((p,i) => {
+                r.innerHTML += `<div class="rank-item ${p.m?'me':''}">#${i+1} ${p.n} <span>$ ${format(p.s)}</span></div>`;
+            });
+        }
+
+        function update() {
+            document.getElementById('dinheiro').innerText = "$ " + format(dinheiro);
+            document.getElementById('gps').innerText = format(porSegundo);
+            let l = document.getElementById('loja'); l.innerHTML = "";
+            upgrades.forEach(u => {
+                l.innerHTML += `<div class="item"><div class="item-info"><b>${u.nome} (${u.count})</b><small>+${format(u.power)}${u.tipo=='c'?'/clique':'/s'}</small></div>
+                <button class="btn-buy" ${dinheiro < u.preco ? 'disabled' : ''} onclick="comprar(${u.id})">${format(u.preco)}</button></div>`;
+            });
+        }
+
+        carregar();
+        setInterval(() => { dinheiro += porSegundo/10; update(); }, 100);
+        setInterval(salvar, 5000); // Salva a cada 5 segundos por segurança
+        update();
+    </script>
+</body>
+</html>
