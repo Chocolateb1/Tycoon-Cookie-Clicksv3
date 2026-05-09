@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="pt-pt">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cookie Empire Tycoon</title>
+    <style>
+        :root { --primary: #00ff88; --bg: #0a0a0b; --surface: #16161a; --gold: #ffd700; }
+        * { -webkit-tap-highlight-color: transparent; user-select: none; box-sizing: border-box; outline: none; }
+        body { margin: 0; background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        #header { text-align: center; padding: 12px; background: var(--surface); border-bottom: 2px solid #333; }
+        #game-title { font-size: 14px; color: var(--gold); font-weight: bold; text-transform: uppercase; letter-spacing: 2px; }
+        #dinheiro { font-size: 28px; font-weight: 900; color: var(--primary); }
+        #stats-bar { display: flex; justify-content: center; gap: 15px; font-size: 11px; color: #888; margin-top: 5px; }
+
+        #tabs { display: flex; background: #000; }
+        .tab-btn { flex: 1; padding: 14px; border: none; background: none; color: #555; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+
+        #area-clique { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #2c1a0a 0%, #000 100%); position: relative; }
+        #cookie { 
+            width: 160px; height: 160px; 
+            background: radial-gradient(circle at 35% 35%, #e2a65a 0%, #b5651d 80%); 
+            border-radius: 50%; position: relative; 
+            box-shadow: 0 10px 0 #5d2e0a, 0 15px 30px rgba(0,0,0,0.8); 
+            transition: transform 0.05s; 
+        }
+        #cookie:active { transform: scale(0.92) translateY(5px); }
+
+        #panel { height: 45vh; background: var(--surface); border-top: 2px solid #333; overflow-y: auto; }
+        .content { padding: 10px; display: none; }
+        .content.active { display: block; }
+
+        .item { background: #1f1f25; margin-bottom: 8px; padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #2d2d35; }
+        .item-info { display: flex; flex-direction: column; }
+        .item-name { font-size: 13px; font-weight: bold; }
+        .item-sub { font-size: 10px; color: var(--primary); }
+        .btn-buy { background: var(--primary); color: #000; border: none; padding: 10px; border-radius: 8px; font-weight: 800; min-width: 90px; }
+        .btn-buy:disabled { opacity: 0.3; }
+
+        .rank-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #222; font-size: 13px; }
+        .me { background: rgba(255, 215, 0, 0.1); color: var(--gold); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div id="game-title">Cookie Empire Tycoon</div>
+        <div id="dinheiro">$ 0</div>
+        <div id="stats-bar"><span id="gps">LUCRO: $ 0/s</span></div>
+    </div>
+
+    <div id="tabs">
+        <button class="tab-btn active" onclick="tab('loja', this)">LOJA (50)</button>
+        <button class="tab-btn" onclick="tab('rank', this)">RANKING</button>
+    </div>
+
+    <div id="area-clique">
+        <div id="cookie" onclick="clicar()"></div>
+    </div>
+
+    <div id="panel">
+        <div id="loja" class="content active"></div>
+        <div id="rank" class="content"></div>
+    </div>
+
+    <script>
+        let game = { dinheiro: 0, porClique: 1, porSegundo: 0, upgrades: [] };
+        
+        // Definições para criar os 50 itens
+        const baseNomes = ["Cursor", "Vovó", "Padaria", "Fábrica", "Mina", "Banco", "Templo", "Mago", "Portal", "Nave"];
+        const baseAdjs = ["Bronze", "Ferro", "Aço", "Ouro", "Platina"];
+
+        for(let i=0; i<50; i++) {
+            game.upgrades.push({
+                id: i,
+                nome: baseAdjs[Math.floor(i/10)] + " " + baseNomes[i%10],
+                preco: 15 * Math.pow(2.2, i),
+                power: (i + 1) * Math.pow(2.5, i),
+                tipo: i % 5 === 0 ? 'c' : 's',
+                count: 0
+            });
+        }
+
+        function format(n) {
+            if (n >= 1e12) return (n / 1e12).toFixed(2) + "T";
+            if (n >= 1e9) return (n / 1e9).toFixed(1) + "B";
+            if (n >= 1e6) return (n / 1e6).toFixed(1) + "M";
+            if (n >= 1e3) return (n / 1e3).toFixed(1) + "K";
+            return Math.floor(n).toLocaleString();
+        }
+
+        function clicar() { game.dinheiro += game.porClique; updateUI(); }
+
+        function comprar(id) {
+            let u = game.upgrades[id];
+            if(game.dinheiro >= u.preco) {
+                game.dinheiro -= u.preco;
+                u.count++;
+                if(u.tipo === 'c') game.porClique += u.power;
+                else game.porSegundo += u.power;
+                u.preco *= 1.6;
+                updateUI();
+            }
+        }
+
+        function tab(id, btn) {
+            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+            if(id === 'rank') renderRank();
+        }
+
+        function updateUI() {
+            document.getElementById('dinheiro').innerText = "$ " + format(game.dinheiro);
+            document.getElementById('gps').innerText = "LUCRO: $ " + format(game.porSegundo) + "/s";
+            let loja = document.getElementById('loja');
+            loja.innerHTML = "";
+            game.upgrades.forEach(u => {
+                loja.innerHTML += `<div class="item">
+                    <div class="item-info"><span class="item-name">${u.nome}</span><span class="item-sub">Qtd: ${u.count}</span></div>
+                    <button class="btn-buy" ${game.dinheiro < u.preco ? 'disabled' : ''} onclick="comprar(${u.id})">${format(u.preco)}</button>
+                </div>`;
+            });
+        }
+
+        function renderRank() {
+            let r = document.getElementById('rank');
+            let lista = [
+                {n: "Imperador de Andromeda", s: 1e15},
+                {n: "Tu (Império)", s: game.dinheiro, me: true},
+                {n: "Magnata do Biscoito", s: 1e9},
+                {n: "Padeiro Mestre", s: 50000}
+            ];
+            lista.sort((a,b) => b.s - a.s);
+            r.innerHTML = "<h3 style='text-align:center'>RANKING GLOBAL</h3>";
+            lista.forEach((p, i) => {
+                r.innerHTML += `<div class="rank-item ${p.me?'me':''}">#${i+1} ${p.n} <span>$ ${format(p.s)}</span></div>`;
+            });
+        }
+
+        setInterval(() => { game.dinheiro += game.porSegundo/10; updateUI(); }, 100);
+        updateUI();
+    </script>
+</body>
+</html>
