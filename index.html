@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cookie Empire Tycoon V27</title>
+    <style>
+        :root { --primary: #00ff88; --bg: #0a0a0b; --surface: #16161a; --gold: #ffd700; }
+        * { -webkit-tap-highlight-color: transparent; user-select: none; box-sizing: border-box; }
+        body { margin: 0; background: var(--bg); color: white; font-family: sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        #header { text-align: center; padding: 15px; background: var(--surface); border-bottom: 2px solid #333; }
+        #dinheiro { font-size: 32px; font-weight: 900; color: var(--primary); }
+        #tabs { display: flex; background: #000; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; color: #555; font-weight: bold; }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+        #area-clique { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #2c1a0a, #000); }
+        #cookie { width: 160px; height: 160px; background: radial-gradient(circle, #f39c12, #8b4513); border-radius: 50%; box-shadow: 0 10px 0 #5d2e0a; cursor: pointer; }
+        #cookie:active { transform: scale(0.95); }
+        #panel { height: 45vh; background: var(--surface); overflow-y: auto; padding: 10px; }
+        .item { background: #1f1f25; margin-bottom: 8px; padding: 12px; border-radius: 10px; display: flex; justify-content: space-between; align-items: center; }
+        .btn-buy { background: var(--primary); color: #000; border: none; padding: 10px; border-radius: 5px; font-weight: bold; }
+    </style>
+</head>
+<body>
+    <div id="header"><div id="dinheiro">$ 0</div></div>
+    <div id="tabs">
+        <button class="tab-btn active" onclick="tab('loja')">LOJA</button>
+        <button class="tab-btn" onclick="tab('rank')">RANKING</button>
+    </div>
+    <div id="area-clique"><div id="cookie" onclick="clicar()"></div></div>
+    <div id="panel"><div id="content"></div></div>
+
+    <script>
+        let dinheiro = 0; let gps = 0; let clique = 1; let upgrades = [];
+        const n = ["Cursor", "Vovó", "Fábrica", "Mina", "Nave"];
+        for(let i=0; i<50; i++) {
+            upgrades.push({id: i, nome: n[i%5] + " " + (Math.floor(i/5)+1), preco: 15 * Math.pow(1.5, i), power: (i+1), tipo: i%2==0?'s':'c', count: 0});
+        }
+        function clicar() { dinheiro += clique; update(); }
+        function comprar(id) {
+            let u = upgrades[id];
+            if(dinheiro >= u.preco) {
+                dinheiro -= u.preco; u.count++;
+                if(u.tipo=='s') gps += u.power; else clique += u.power;
+                u.preco *= 1.5; update();
+            }
+        }
+        function update() {
+            document.getElementById('dinheiro').innerText = "$ " + Math.floor(dinheiro).toLocaleString();
+            let c = document.getElementById('content'); c.innerHTML = "";
+            upgrades.forEach(u => {
+                c.innerHTML += `<div class="item"><div><b>${u.nome}</b><br><small>Qtd: ${u.count}</small></div>
+                <button class="btn-buy" onclick="comprar(${u.id})">$ ${Math.floor(u.preco)}</button></div>`;
+            });
+        }
+        setInterval(() => { dinheiro += gps/10; update(); }, 100);
+        update();
+    </script>
+</body>
+</html>
