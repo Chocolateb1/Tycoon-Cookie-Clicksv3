@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cookie Empire Tycoon V27 - Full Shop</title>
+    <style>
+        :root { --primary: #00ff88; --bg: #0a0a0b; --surface: #16161a; --gold: #ffd700; }
+        * { -webkit-tap-highlight-color: transparent; user-select: none; box-sizing: border-box; margin: 0; padding: 0; }
+        body { background: var(--bg); color: white; font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
+        
+        /* Topo */
+        #header { text-align: center; padding: 15px; background: var(--surface); border-bottom: 2px solid #333; flex-shrink: 0; }
+        #dinheiro { font-size: 32px; font-weight: 900; color: var(--primary); text-shadow: 0 0 10px rgba(0,255,136,0.3); }
+        #gps-display { font-size: 12px; color: #888; margin-top: 4px; }
+
+        /* Abas */
+        #tabs { display: flex; background: #000; flex-shrink: 0; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; color: #555; font-weight: bold; cursor: pointer; transition: 0.3s; }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+
+        /* Jogo Principal */
+        #game-area { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #2c1a0a 0%, #000 100%); }
+        #cookie { 
+            width: 170px; height: 170px; 
+            background: radial-gradient(circle at 30% 30%, #e2a65a, #b5651d 70%, #8b4513 100%);
+            border-radius: 50%; border: 4px solid #3d1f05;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.8);
+            cursor: pointer; position: relative; transition: transform 0.05s;
+        }
+        #cookie:active { transform: scale(0.92); }
+        #cookie::after { content: '•••'; position: absolute; top: 30%; left: 20%; color: #3d1f05; font-size: 40px; letter-spacing: 15px; opacity: 0.6; }
+
+        /* Painel de Baixo */
+        #panel { height: 40vh; background: var(--surface); border-top: 2px solid #333; overflow-y: auto; flex-shrink: 0; }
+        .content { padding: 12px; display: none; }
+        .content.active { display: block; }
+        
+        /* Lista da Loja */
+        .item { background: #1f1f25; margin-bottom: 10px; padding: 12px; border-radius: 12px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #2d2d35; }
+        .item-info b { font-size: 14px; color: #eee; display: block; }
+        .item-info small { color: var(--primary); font-size: 11px; }
+        .btn-buy { background: var(--primary); color: #000; border: none; padding: 10px 15px; border-radius: 8px; font-weight: 800; min-width: 90px; cursor: pointer; }
+        .btn-buy:disabled { background: #2d2d35; color: #555; cursor: not-allowed; }
+
+        /* Ranking */
+        .rank-item { display: flex; justify-content: space-between; padding: 12px; border-bottom: 1px solid #222; font-size: 14px; }
+        .me { background: rgba(0, 255, 136, 0.1); color: var(--primary); font-weight: bold; border-left: 4px solid var(--primary); }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div id="dinheiro">$ 0</div>
+        <div id="gps-display">Ganhos: $ <span id="gps">0</span>/s</div>
+    </div>
+
+    <div id="tabs">
+        <button class="tab-btn active" onclick="tab('loja', this)">LOJA (50)</button>
+        <button class="tab-btn" onclick="tab('rank', this)">RANKING 100</button>
+    </div>
+
+    <div id="game-area">
+        <div id="cookie" onclick="clicar()"></div>
+    </div>
+
+    <div id="panel">
+        <div id="loja" class="content active"></div>
+        <div id="rank" class="content"></div>
+    </div>
+
+    <script>
+        let dinheiro = 0; let porClique = 1; let porSegundo = 0; let upgrades = [];
+        const nomes = ["Cursor", "Vovó", "Padaria", "Fábrica", "Mina", "Banco", "Nave", "Portal", "Laboratório", "Deus"];
+        const tiers = ["Bronze", "Ferro", "Aço", "Ouro", "Platina"];
+
+        // Criar as 50 melhorias (Todas visíveis)
+        for(let i=0; i<50; i++) {
+            upgrades.push({
+                id: i,
+                nome: tiers[Math.floor(i/10)] + " " + nomes[i%10],
+                preco: 15 * Math.pow(1.6, i), 
+                power: (i + 1) * Math.pow(1.5, i), 
+                tipo: i % 5 === 0 ? 'c' : 's',
+                count: 0
+            });
+        }
+
+        function format(v) {
+            if(v >= 1e15) return (v/1e15).toFixed(2) + "Q";
+            if(v >= 1e12) return (v/1e12).toFixed(2) + "T";
+            if(v >= 1e9) return (v/1e9).toFixed(2) + "B";
+            if(v >= 1e6) return (v/1e6).toFixed(2) + "M";
+            return Math.floor(v).toLocaleString();
+        }
+
+        function clicar() { dinheiro += porClique; update(); }
+
+        function comprar(id) {
+            let u = upgrades[id];
+            if(dinheiro >= u.preco) {
+                dinheiro -= u.preco;
+                u.count++;
+                if(u.tipo === 'c') porClique += u.power; else porSegundo += u.power;
+                u.preco *= 1.5;
+                update();
+                save();
+            }
+        }
+
+        function tab(t, btn) {
+            document.querySelectorAll('.content').forEach(c => c.classList.remove('active'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById(t).classList.add('active');
+            btn.classList.add('active');
+            if(t === 'rank') renderRank();
+        }
+
+        function renderRank() {
+            let r = document.getElementById('rank');
+            r.innerHTML = "<h3 style='text-align:center; margin-bottom:10px; color:var(--gold)'>TOP 100 GLOBAL</h3>";
+            let bots = [];
+            for(let i=0; i<99; i++) { 
+                bots.push({ n: "Jogador_" + (i + 101), s: Math.pow(10, 14 - (i/6)) }); 
+            }
+            bots.push({ n: "VOCÊ", s: dinheiro, me: true });
+            bots.sort((a,b) => b.s - a.s).slice(0, 100).forEach((p, i) => {
+                r.innerHTML += `<div class="rank-item ${p.me?'me':''}">#${i+1} ${p.n} <span>$ ${format(p.s)}</span></div>`;
+            });
+        }
+
+        function update() {
+            document.getElementById('dinheiro').innerText = "$ " + format(dinheiro);
+            document.getElementById('gps').innerText = format(porSegundo);
+            let loja = document.getElementById('loja');
+            loja.innerHTML = "";
+            upgrades.forEach(u => {
+                loja.innerHTML += `<div class="item">
+                    <div class="item-info"><b>${u.nome} (${u.count})</b><small>+${format(u.power)}${u.tipo=='c'?'/clique':'/s'}</small></div>
+                    <button class="btn-buy" ${dinheiro < u.preco ? 'disabled' : ''} onclick="comprar(${u.id})">${format(u.preco)}</button>
+                </div>`;
+            });
+        }
+
+        function save() {
+            localStorage.setItem('cookie_v27_save', JSON.stringify({d: dinheiro, pc: porClique, ps: porSegundo, u: upgrades.map(x => x.count)}));
+        }
+
+        function load() {
+            let s = JSON.parse(localStorage.getItem('cookie_v27_save'));
+            if(s) {
+                dinheiro = s.d; porClique = s.pc; porSegundo = s.ps;
+                s.u.forEach((c, i) => { 
+                    upgrades[i].count = c; 
+                    for(let j=0; j<c; j++) upgrades[i].preco *= 1.5;
+                });
+            }
+        }
+
+        load();
+        setInterval(() => { dinheiro += porSegundo/10; update(); }, 100);
+        update();
+    </script>
+</body>
+</html>
