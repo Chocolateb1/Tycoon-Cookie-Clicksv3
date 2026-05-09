@@ -1,0 +1,25 @@
+function tab(t, b) {
+    document.querySelectorAll('.content, .tab-btn').forEach(e => e.classList.remove('active'));
+    document.getElementById(t).classList.add('active'); b.classList.add('active');
+    
+    if(t === 'rank') {
+        let r = document.getElementById('rank');
+        r.innerHTML = "<h3 style='text-align:center;color:var(--gold)'>TOP 100 MUNDIAL</h3>";
+        
+        // Gera 100 competidores
+        let lista = [];
+        for(let i = 0; i < 99; i++) {
+            lista.push({
+                n: "Jogador_" + (Math.floor(Math.random() * 9000) + 1000),
+                s: Math.pow(10, 15 - (i / 7)) // Escala as pontuações de quatrilhões para baixo
+            });
+        }
+        // Adiciona você
+        lista.push({n: "VOCÊ (Seu Império)", s: dinheiro, m: true});
+        
+        // Ordena e exibe
+        lista.sort((x, y) => y.s - x.s).forEach((p, i) => {
+            r.innerHTML += `<div class="rank-item ${p.m ? 'me' : ''}">#${i + 1} ${p.n} <span>$ ${format(p.s)}</span></div>`;
+        });
+    }
+}
