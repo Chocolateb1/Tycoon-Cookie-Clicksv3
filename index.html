@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cookie Empire - Versão Final</title>
+    <style>
+        :root { --primary: #00ff88; --bg: #0a0a0b; --surface: #1c1c22; --cookie: #c06c1b; }
+        * { margin: 0; padding: 0; box-sizing: border-box; user-select: none; font-family: sans-serif; }
+        body { background: var(--bg); color: white; height: 100vh; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* Cabeçalho */
+        #header { padding: 20px; text-align: center; background: var(--surface); border-bottom: 2px solid #333; }
+        #dinheiro { font-size: 35px; font-weight: bold; color: var(--primary); }
+        #stats { color: #888; font-size: 14px; margin-top: 5px; }
+
+        /* Abas */
+        #tabs { display: flex; background: #000; }
+        .tab-btn { flex: 1; padding: 15px; border: none; background: none; color: #666; font-weight: bold; cursor: pointer; }
+        .tab-btn.active { color: var(--primary); border-bottom: 3px solid var(--primary); }
+
+        /* Área do Jogo */
+        #game { flex-grow: 1; display: flex; align-items: center; justify-content: center; background: radial-gradient(circle, #442a15 0%, #000 100%); position: relative; }
+        
+        /* O COOKIE COM PEPITAS */
+        #cookie { 
+            width: 180px; height: 180px; 
+            background: radial-gradient(circle at 30% 30%, #e2a65a, #b5651d 70%, #8b4513 100%);
+            border-radius: 50%; border: 5px solid #5d2e0a;
+            position: relative; cursor: pointer; transition: transform 0.05s;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.6);
+        }
+        /* As pepitas de chocolate */
+        .pepita { position: absolute; background: #3d1f05; border-radius: 50%; width: 15px; height: 15px; box-shadow: inset -2px -2px 4px rgba(0,0,0,0.5); }
+        #cookie:active { transform: scale(0.93); }
+
+        /* Painel Inferior */
+        #panel { height: 40vh; background: var(--surface); border-top: 2px solid #333; overflow-y: auto; }
+        .content { padding: 15px; display: none; }
+        .content.active { display: block; }
+
+        /* Itens da Loja */
+        .item { background: #25252d; padding: 15px; border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; border: 1px solid #333; }
+        .item-info b { display: block; font-size: 16px; }
+        .item-info span { color: var(--primary); font-size: 12px; }
+        .btn-buy { background: var(--primary); color: #000; border: none; padding: 10px 15px; border-radius: 8px; font-weight: bold; min-width: 90px; }
+        .btn-buy:disabled { opacity: 0.3; }
+
+        /* Ranking */
+        .rank-line { display: flex; justify-content: space-between; padding: 10px; border-bottom: 1px solid #333; }
+        .me { background: rgba(0, 255, 136, 0.1); color: var(--primary); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <div id="header">
+        <div id="dinheiro">$ 0</div>
+        <div id="stats">Ganhos: $ <span id="gps">0</span>/s</div>
+    </div>
+
+    <div id="tabs">
+        <button class="tab-btn active" onclick="showTab('loja', this)">LOJA</button>
+        <button class="tab-btn" onclick="showTab('rank', this)">TOP 100</button>
+    </div>
+
+    <div id="game">
+        <div id="cookie" onclick="clickCookie()">
+            <div class="pepita" style="top:20%; left:25%"></div>
+            <div class="pepita" style="top:15%; left:60%"></div>
+            <div class="pepita" style="top:45%; left:45%"></div>
+            <div class="pepita" style="top:65%; left:20%"></div>
+            <div class="pepita" style="top:70%; left:65%"></div>
+            <div class="pepita" style="top:35%; left:75%"></div>
+        </div>
+    </div>
+
+    <div id="panel">
+        <div id="loja" class="content active"></div>
+        <div id="rank" class="content"></div>
+    </div>
+
+    <script>
+        let grana = 0; let cpc = 1; let gps = 0; let itens = [];
+
+        // Criar 50 itens
+        for(let i=1; i<=50; i++) {
+            itens.push({
+                id: i,
+                nome: "Melhoria " + i,
+                preco: 10 * Math.pow(1.6, i),
+                poder: i * Math.pow(1.5, i),
+                tipo: i % 5 === 0 ? 'c' : 's',
+                count: 0
+            });
+        }
+
+        function format(n) {
+            if(n >= 1e12) return (n/1e12).toFixed(2) + "T";
+            if(n >= 1e9) return (n/1e9).toFixed(2) + "B";
+            if(n >= 1e6) return (n/1e6).toFixed(2) + "M";
+            return Math.floor(n).toLocaleString();
+        }
+
+        function clickCookie() { grana += cpc; update(); }
+
+        function buy(idx) {
+            let item = itens[idx];
+            if(grana >= item.preco) {
+                grana -= item.preco;
+                item.count++;
+                if(item.tipo === 'c') cpc += item.poder; else gps += item.poder;
+                item.preco *= 1.5;
+                update();
+                save();
+            }
+        }
+
+        function showTab(id, btn) {
+            document.querySelectorAll('.content, .tab-btn').forEach(e => e.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            btn.classList.add('active');
+            if(id === 'rank') drawRank();
+        }
+
+        function drawRank() {
+            let r = document.getElementById('rank');
+            r.innerHTML = "<h2 style='text-align:center;margin-bottom:15px'>TOP 100 GLOBAL</h2>";
+            let list = [];
+            for(let i=0; i<99; i++) list.push({n: "Player_"+(i+100), s: Math.pow(10, 14-(i/7))});
+            list.push({n: "VOCÊ", s: grana, me: true});
+            list.sort((a,b) => b.s - a.s).forEach((p, i) => {
+                r.innerHTML += `<div class="rank-line ${p.me?'me':''}">#${i+1} ${p.n} <span>$ ${format(p.s)}</span></div>`;
+            });
+        }
+
+        function update() {
+            document.getElementById('dinheiro').innerText = "$ " + format(grana);
+            document.getElementById('gps').innerText = format(gps);
+            let loja = document.getElementById('loja');
+            loja.innerHTML = "";
+            itens.forEach((it, i) => {
+                loja.innerHTML += `<div class="item">
+                    <div class="item-info"><b>${it.nome} (${it.count})</b><span>+${format(it.poder)}/s</span></div>
+                    <button class="btn-buy" ${grana < it.preco ? 'disabled' : ''} onclick="buy(${i})">${format(it.preco)}</button>
+                </div>`;
+            });
+        }
+
+        function save() {
+            localStorage.setItem('cookie_save', JSON.stringify({g: grana, c: cpc, s: gps, u: itens.map(x => x.count)}));
+        }
+
+        function load() {
+            let s = JSON.parse(localStorage.getItem('cookie_save'));
+            if(s) {
+                grana = s.g; cpc = s.c; gps = s.s;
+                s.u.forEach((c, i) => { 
+                    itens[i].count = c; 
+                    for(let j=0; j<c; j++) itens[i].preco *= 1.5;
+                });
+            }
+        }
+
+        load();
+        setInterval(() => { grana += gps/10; update(); }, 100);
+        update();
+    </script>
+</body>
+</html>
